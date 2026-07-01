@@ -503,7 +503,7 @@
             this.groupBox33.Controls.Add(this.yRotBuildUpDown);
             this.groupBox33.Controls.Add(this.xRotBuildUpDown);
             this.groupBox33.Controls.Add(this.zRotBuildUpDown);
-            this.groupBox33.Enabled = false;
+            this.groupBox33.Enabled = true;
             this.groupBox33.Location = new System.Drawing.Point(339, 141);
             this.groupBox33.Name = "groupBox33";
             this.groupBox33.Size = new System.Drawing.Size(131, 123);
