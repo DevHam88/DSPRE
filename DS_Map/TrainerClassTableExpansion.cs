@@ -15,6 +15,9 @@ namespace DSPRE
         public static bool IsSupportedForCurrentRom =>
             RomInfo.gameFamily == GameFamilies.Plat && RomInfo.gameLanguage == GameLanguages.English;
 
+        public static bool IsGenderTableSupportedForCurrentRom =>
+            RomInfo.trainerClassGenderTableVanillaOffset != 0 && RomInfo.trainerClassGenderTableVanillaCount > 0;
+
         public static bool IsPrizeMulSupportedForCurrentRom =>
             RomInfo.gameLanguage == GameLanguages.English &&
             (RomInfo.gameFamily == GameFamilies.Plat || RomInfo.gameFamily == GameFamilies.DP || RomInfo.gameFamily == GameFamilies.HGSS);
@@ -95,9 +98,20 @@ namespace DSPRE
         {
             gender = 0;
             error = null;
-            if (!IsSupportedForCurrentRom) { error = "Only implemented for Platinum (English)."; return false; }
-            if (!TryResolveByteTable(RomInfo.arm9Path, RomInfo.trainerClassGenderTablePointerOffset, RomInfo.arm9Path, RomInfo.trainerClassGenderTableVanillaOffset, RomInfo.trainerClassGenderTableVanillaCount, out byte[] table, out error))
-                return false;
+            if (!IsGenderTableSupportedForCurrentRom) { error = "Trainer-class gender table isn't known for this game/language."; return false; }
+
+            byte[] table;
+            if (IsSupportedForCurrentRom)
+            {
+                if (!TryResolveByteTable(RomInfo.arm9Path, RomInfo.trainerClassGenderTablePointerOffset, RomInfo.arm9Path, RomInfo.trainerClassGenderTableVanillaOffset, RomInfo.trainerClassGenderTableVanillaCount, out table, out error))
+                    return false;
+            }
+            else
+            {
+                try { table = DSUtils.ReadFromFile(RomInfo.arm9Path, RomInfo.trainerClassGenderTableVanillaOffset, RomInfo.trainerClassGenderTableVanillaCount); }
+                catch (Exception ex) { error = ex.Message; return false; }
+            }
+
             if (classId < 0 || classId >= table.Length) { error = "Class index out of range."; return false; }
             gender = table[classId];
             return true;
@@ -106,21 +120,39 @@ namespace DSPRE
         public static bool TryWriteGender(int classId, byte gender, out string error)
         {
             error = null;
-            if (!IsSupportedForCurrentRom) { error = "Only implemented for Platinum (English)."; return false; }
-            if (!TryResolveByteTable(RomInfo.arm9Path, RomInfo.trainerClassGenderTablePointerOffset, RomInfo.arm9Path, RomInfo.trainerClassGenderTableVanillaOffset, RomInfo.trainerClassGenderTableVanillaCount, out byte[] table, out error))
-                return false;
-            if (classId < 0 || classId >= table.Length) { error = "Class index out of range."; return false; }
+            if (!IsGenderTableSupportedForCurrentRom) { error = "Trainer-class gender table isn't known for this game/language."; return false; }
+            if (gender > 2) { error = "Trainer gender must be 0, 1, or 2."; return false; }
 
-            uint ptr = BitConverter.ToUInt32(DSUtils.ReadFromFile(RomInfo.arm9Path, RomInfo.trainerClassGenderTablePointerOffset, 4), 0);
-            if (ptr < RomInfo.synthOverlayLoadAddress)
+            try
             {
-                error = "The gender table hasn't been expanded yet. Add a trainer class first (or repoint it by hand).";
+                if (IsSupportedForCurrentRom)
+                {
+                    if (!TryResolveByteTable(RomInfo.arm9Path, RomInfo.trainerClassGenderTablePointerOffset, RomInfo.arm9Path, RomInfo.trainerClassGenderTableVanillaOffset, RomInfo.trainerClassGenderTableVanillaCount, out byte[] table, out error))
+                        return false;
+                    if (classId < 0 || classId >= table.Length) { error = "Class index out of range."; return false; }
+
+                    uint ptr = BitConverter.ToUInt32(DSUtils.ReadFromFile(RomInfo.arm9Path, RomInfo.trainerClassGenderTablePointerOffset, 4), 0);
+                    if (ptr >= RomInfo.synthOverlayLoadAddress)
+                    {
+                        long start = ptr - RomInfo.synthOverlayLoadAddress;
+                        DSUtils.WriteToFile(Filesystem.expArmPath, new[] { gender }, (uint)(start + classId));
+                        return true;
+                    }
+                }
+                else if (classId < 0 || classId >= RomInfo.trainerClassGenderTableVanillaCount)
+                {
+                    error = "Class index out of range.";
+                    return false;
+                }
+
+                DSUtils.WriteToFile(RomInfo.arm9Path, new[] { gender }, RomInfo.trainerClassGenderTableVanillaOffset + (uint)classId);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
                 return false;
             }
-
-            long start = ptr - RomInfo.synthOverlayLoadAddress;
-            DSUtils.WriteToFile(Filesystem.expArmPath, new[] { gender }, (uint)(start + classId));
-            return true;
         }
 
         public static bool TryReadPrizeMul(int classId, out byte multiplier, out string error)
@@ -163,8 +195,16 @@ namespace DSPRE
             if (RomInfo.trainerClassPrizeMulTableIsPaired)
                 return TryWritePairedPrizeMul(ovPath, classId, multiplier, out error);
 
-            if (!TryResolveByteTable(ovPath, RomInfo.trainerClassPrizeMulTablePointerOffset, ovPath, RomInfo.trainerClassPrizeMulTableVanillaOffset, RomInfo.trainerClassPrizeMulTableVanillaCount, out byte[] table, out error))
+            byte[] table;
+            if (RomInfo.trainerClassPrizeMulTablePointerOffset == 0)
+            {
+                try { table = DSUtils.ReadFromFile(ovPath, RomInfo.trainerClassPrizeMulTableVanillaOffset, RomInfo.trainerClassPrizeMulTableVanillaCount); }
+                catch (Exception ex) { error = ex.Message; return false; }
+            }
+            else if (!TryResolveByteTable(ovPath, RomInfo.trainerClassPrizeMulTablePointerOffset, ovPath, RomInfo.trainerClassPrizeMulTableVanillaOffset, RomInfo.trainerClassPrizeMulTableVanillaCount, out table, out error))
+            {
                 return false;
+            }
             if (classId < 0 || classId >= table.Length) { error = "Class index out of range."; return false; }
 
             bool repointed = false;

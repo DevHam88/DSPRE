@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Windows.Forms;
+using DSPRE.ROMFiles;
 using static DSPRE.RomInfo;
 
 namespace DSPRE
@@ -196,9 +197,27 @@ namespace DSPRE
             private static List<bool> trainerClassGenders = new List<bool>();
 
             private static bool tableLoaded = false;
+            private static readonly HashSet<string> displayedMetadataWarnings = new HashSet<string>();
 
             public static bool GetTrainerClassGender(int trainerClassID)
             {
+                TrainerClassMetadataDetectionState metadataState = TrainerClassMetadataStore.DetectCurrentRom(out string metadataDetail);
+                if (metadataState == TrainerClassMetadataDetectionState.SchemaV1)
+                {
+                    if (TrainerClassMetadataStore.TryReadCommonFields(trainerClassID, out TrainerClassMetadataCommonFields fields, out string error))
+                    {
+                        return fields.Gender != 1;
+                    }
+
+                    WarnMetadataGenderFallback(trainerClassID, "Couldn't read trainer-class metadata gender: " + error);
+                    return true;
+                }
+                if (metadataState == TrainerClassMetadataDetectionState.Inconsistent)
+                {
+                    WarnMetadataGenderFallback(trainerClassID, metadataDetail);
+                    return true;
+                }
+
                 if (TrainerClassTableExpansion.TryReadGender(trainerClassID, out byte gender, out _))
                 {
                     return gender != 1;
@@ -209,6 +228,18 @@ namespace DSPRE
                     ReadTrainerClassGenderTable();
                 }
                 return trainerClassGenders[trainerClassID];
+            }
+
+            private static void WarnMetadataGenderFallback(int trainerClassID, string detail)
+            {
+                string message = detail + " Trainer gender will default to male for calculations.";
+                AppLogger.Error(message);
+
+                string warningKey = RomInfo.workDir + "|" + trainerClassID + "|" + detail;
+                if (displayedMetadataWarnings.Add(warningKey))
+                {
+                    MessageBox.Show(message, "Trainer-class metadata error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
             }
                 
             public static void ReadTrainerClassGenderTable()

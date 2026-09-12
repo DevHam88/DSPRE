@@ -266,6 +266,8 @@ namespace DSPRE
 
             battleBg,               // battle backgrounds + move-effect HAIKEI scroll BGs, pl_batt_bg.narc (HGSS a/0/0/7 = ARC_BATT_BG)
             battleObj,              // battle OBJ cells incl. the terrain ground platforms, pl_batt_obj.narc (HGSS a/0/0/8 = ARC_BATT_OBJ)
+
+            trainerClassMetadata,
         };
 
         public static Dictionary<DirNames, (string packedDir, string unpackedDir)> gameDirs { get; private set; }
@@ -1544,7 +1546,7 @@ namespace DSPRE
                     break;
 
                 case GameFamilies.HGSS:
-                    trainerClassGenderTableVanillaCount = 128;
+                    trainerClassGenderTableVanillaCount = 129;
                     switch (gameLanguage)
                     {
                         case GameLanguages.English: trainerClassGenderTableVanillaOffset = 0xFFB90; break;
@@ -2464,6 +2466,7 @@ namespace DSPRE
 
                         [DirNames.synthOverlay] = $@"{dataFolderName}\a\0\2\8",
                         [DirNames.dynamicHeaders] = $@"{dataFolderName}\a\0\5\0",
+                        [DirNames.trainerClassMetadata] = $@"{dataFolderName}\a\1\5\5",
 
                         [DirNames.textArchives] = $@"{dataFolderName}\a\0\2\7",
 

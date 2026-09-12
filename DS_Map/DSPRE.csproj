@@ -567,6 +567,7 @@
     <Compile Include="ROMFiles\ScriptReference.cs" />
     <Compile Include="ROMFiles\SpeciesFile.cs" />
     <Compile Include="ROMFiles\TrainerFile.cs" />
+    <Compile Include="ROMFiles\TrainerClassMetadataRecord.cs" />
     <Compile Include="PatchToolboxDialog.cs">
       <SubType>Form</SubType>
     </Compile>

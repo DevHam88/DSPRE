@@ -58,10 +58,14 @@ namespace DSPRE.Editors
         {
             Helpers.DisableHandlers();
 
+            TrainerClassMetadataStore.Reset();
+
             trainerEditorIsReady = false;
             isDirty = false;
             loadedTrainerID = -1;
             currentTrainerFile = null;
+            trainerClassMetadataState = TrainerClassMetadataDetectionState.Stock;
+            trainerClassMetadataDetail = null;
 
             // Clear combo boxes and list boxes
             trainerComboBox.Items.Clear();
@@ -122,6 +126,9 @@ namespace DSPRE.Editors
         private Timer trainerClassAnimTimer;
 
         Dictionary<byte, (uint entryOffset, ushort musicD, ushort? musicN)> trainerClassEncounterMusicDict;
+        private TrainerClassMetadataDetectionState trainerClassMetadataState = TrainerClassMetadataDetectionState.Stock;
+        private string trainerClassMetadataDetail;
+        private byte loadedNativeTrainerClassGender;
         private void SetupTrainerClassEncounterMusicTable()
         {
             RomInfo.SetEncounterMusicTableOffsetToRAMAddress();
@@ -212,7 +219,25 @@ namespace DSPRE.Editors
             Helpers.DisableHandlers();
 
             //SetTrainerNameMaxLen();
-            SetupTrainerClassEncounterMusicTable();
+            trainerClassMetadataState = TrainerClassMetadataStore.DetectCurrentRom(out trainerClassMetadataDetail);
+            if (trainerClassMetadataState == TrainerClassMetadataDetectionState.SchemaV1)
+            {
+                if (!TrainerClassMetadataStore.EnsureUnpacked(out trainerClassMetadataDetail))
+                {
+                    trainerClassMetadataState = TrainerClassMetadataDetectionState.Inconsistent;
+                }
+                trainerClassEncounterMusicDict = new Dictionary<byte, (uint entryOffset, ushort musicD, ushort? musicN)>();
+            }
+            else if (trainerClassMetadataState == TrainerClassMetadataDetectionState.Stock)
+            {
+                SetupTrainerClassEncounterMusicTable();
+            }
+            else
+            {
+                trainerClassEncounterMusicDict = new Dictionary<byte, (uint entryOffset, ushort musicD, ushort? musicN)>();
+            }
+
+            TrainerClassTableExpansion.Detect();
             /* Extract essential NARCs sub-archives*/
             Helpers.statusLabelMessage("Setting up Trainer Editor...");
             Update();
@@ -452,6 +477,12 @@ namespace DSPRE.Editors
             Helpers.EnableHandlers();
             trainerComboBox_SelectedIndexChanged(null, null);
             Helpers.statusLabelMessage();
+
+            if (trainerClassMetadataState == TrainerClassMetadataDetectionState.Inconsistent)
+            {
+                MessageBox.Show(trainerClassMetadataDetail + "\n\nTrainer-class metadata editing has been disabled to prevent stale native-table writes.",
+                    "Unsupported trainer-class metadata state", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private void WireDirtyTrackingHandlers()
@@ -1260,32 +1291,82 @@ namespace DSPRE.Editors
 
             trainerClassNameTextbox.Text = GetTrainerClassNameFromListbox(trainerClassListBox.SelectedItem);
 
-            if (trainerClassEncounterMusicDict.TryGetValue((byte)selection, out (uint entryOffset, ushort musicD, ushort? musicN) output))
+            if (trainerClassMetadataState == TrainerClassMetadataDetectionState.SchemaV1)
             {
-                encounterSSEQMainUpDown.Enabled = eyeContactMusicLabel.Enabled = true;
-                encounterSSEQMainUpDown.Value = output.musicD;
+                if (TrainerClassMetadataStore.TryReadCommonFields(selection, out TrainerClassMetadataCommonFields fields, out string error))
+                {
+                    SetTrainerClassMetadataControlsEnabled(true);
+                    prizeMulUpDown.Maximum = ushort.MaxValue;
+                    trainerClassGenderComboBox.SelectedIndex = fields.Gender;
+                    prizeMulUpDown.Value = fields.PrizeCoefficient;
+                    encounterSSEQMainUpDown.Value = fields.MainEyeContactMusic;
+                    encounterSSEQAltUpDown.Value = fields.AlternateEyeContactMusic;
+                }
+                else
+                {
+                    SetTrainerClassMetadataControlsEnabled(false);
+                    ClearTrainerClassMetadataControls();
+                    MessageBox.Show(error, "Trainer-class metadata error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            else if (trainerClassMetadataState == TrainerClassMetadataDetectionState.Inconsistent)
+            {
+                SetTrainerClassMetadataControlsEnabled(false);
+                ClearTrainerClassMetadataControls();
             }
             else
             {
-                encounterSSEQMainUpDown.Enabled = eyeContactMusicLabel.Enabled = false;
-                encounterSSEQMainUpDown.Value = 0;
-            }
+                if (trainerClassEncounterMusicDict.TryGetValue((byte)selection, out (uint entryOffset, ushort musicD, ushort? musicN) output))
+                {
+                    encounterSSEQMainUpDown.Enabled = eyeContactMusicLabel.Enabled = true;
+                    encounterSSEQMainUpDown.Value = output.musicD;
+                }
+                else
+                {
+                    encounterSSEQMainUpDown.Enabled = eyeContactMusicLabel.Enabled = false;
+                    encounterSSEQMainUpDown.Value = 0;
+                }
 
-            eyeContactMusicAltLabel.Enabled = encounterSSEQAltUpDown.Enabled = (encounterSSEQMainUpDown.Enabled && gameFamily == GameFamilies.HGSS);
-            encounterSSEQAltUpDown.Value = output.musicN != null ? (ushort)output.musicN : 0;
+                eyeContactMusicAltLabel.Enabled = encounterSSEQAltUpDown.Enabled = (encounterSSEQMainUpDown.Enabled && gameFamily == GameFamilies.HGSS);
+                encounterSSEQAltUpDown.Value = output.musicN != null ? (ushort)output.musicN : 0;
 
-            if (TrainerClassTableExpansion.IsPrizeMulSupportedForCurrentRom && TrainerClassTableExpansion.TryReadPrizeMul(selection, out byte prizeMul, out _))
-            {
-                prizeMulLabel.Enabled = prizeMulUpDown.Enabled = true;
-                prizeMulUpDown.Value = prizeMul;
-            }
-            else
-            {
-                prizeMulLabel.Enabled = prizeMulUpDown.Enabled = false;
-                prizeMulUpDown.Value = 0;
+                prizeMulUpDown.Maximum = byte.MaxValue;
+                if (TrainerClassTableExpansion.IsPrizeMulSupportedForCurrentRom && TrainerClassTableExpansion.TryReadPrizeMul(selection, out byte prizeMul, out _))
+                {
+                    prizeMulLabel.Enabled = prizeMulUpDown.Enabled = true;
+                    prizeMulUpDown.Value = prizeMul;
+                }
+                else
+                {
+                    prizeMulLabel.Enabled = prizeMulUpDown.Enabled = false;
+                    prizeMulUpDown.Value = 0;
+                }
+
+                bool genderAvailable = TrainerClassTableExpansion.TryReadGender(selection, out byte gender, out _);
+                loadedNativeTrainerClassGender = genderAvailable ? gender : (byte)0;
+                trainerClassGenderLabel.Enabled = trainerClassGenderComboBox.Enabled = genderAvailable;
+                trainerClassGenderComboBox.SelectedIndex = genderAvailable && gender == 1 ? 1 : 0;
             }
 
             currentTrainerFile.trp.trainerClass = (byte)selection;
+        }
+
+        private void SetTrainerClassMetadataControlsEnabled(bool enabled)
+        {
+            trainerClassGenderLabel.Enabled = trainerClassGenderComboBox.Enabled = enabled;
+            prizeMulLabel.Enabled = prizeMulUpDown.Enabled = enabled;
+            eyeContactMusicLabel.Enabled = encounterSSEQMainUpDown.Enabled = enabled;
+            bool alternateEnabled = enabled && gameFamily == GameFamilies.HGSS;
+            eyeContactMusicAltLabel.Enabled = encounterSSEQAltUpDown.Enabled = alternateEnabled;
+        }
+
+        private void ClearTrainerClassMetadataControls()
+        {
+            loadedNativeTrainerClassGender = 0;
+            trainerClassGenderComboBox.SelectedIndex = 0;
+            prizeMulUpDown.Value = 0;
+            encounterSSEQMainUpDown.Value = 0;
+            encounterSSEQAltUpDown.Value = 0;
         }
 
         private void addTrainerButton_Click(object sender, EventArgs e)
@@ -1414,42 +1495,85 @@ namespace DSPRE.Editors
         private void saveTrainerClassButton_Click(object sender, EventArgs e)
         {
             Helpers.DisableHandlers();
-
             int selectedTrClass = trainerClassListBox.SelectedIndex;
+            bool metadataSaved = true;
+            string metadataError = null;
 
-            byte b_selectedTrClass = (byte)selectedTrClass;
-            ushort eyeMusicID = (ushort)encounterSSEQMainUpDown.Value;
-            ushort altEyeMusicID = (ushort)encounterSSEQAltUpDown.Value;
-
-            if (trainerClassEncounterMusicDict.TryGetValue(b_selectedTrClass, out var dictEntry))
+            try
             {
-                ARM9.WriteBytes(BitConverter.GetBytes(eyeMusicID), dictEntry.entryOffset + 2);
+                ushort eyeMusicID = (ushort)encounterSSEQMainUpDown.Value;
+                ushort altEyeMusicID = (ushort)encounterSSEQAltUpDown.Value;
 
-                if (gameFamily.Equals(GameFamilies.HGSS))
+                if (trainerClassMetadataState == TrainerClassMetadataDetectionState.SchemaV1)
                 {
-                    ARM9.WriteBytes(BitConverter.GetBytes(altEyeMusicID), dictEntry.entryOffset + 4);
+                    var fields = new TrainerClassMetadataCommonFields
+                    {
+                        Gender = (ushort)trainerClassGenderComboBox.SelectedIndex,
+                        PrizeCoefficient = (ushort)prizeMulUpDown.Value,
+                        MainEyeContactMusic = eyeMusicID,
+                        AlternateEyeContactMusic = altEyeMusicID
+                    };
+                    metadataSaved = TrainerClassMetadataStore.TryWriteCommonFields(selectedTrClass, fields, out metadataError);
+                }
+                else if (trainerClassMetadataState == TrainerClassMetadataDetectionState.Stock)
+                {
+                    byte b_selectedTrClass = (byte)selectedTrClass;
+                    if (trainerClassEncounterMusicDict.TryGetValue(b_selectedTrClass, out var dictEntry))
+                    {
+                        ARM9.WriteBytes(BitConverter.GetBytes(eyeMusicID), dictEntry.entryOffset + 2);
+
+                        if (gameFamily.Equals(GameFamilies.HGSS))
+                        {
+                            ARM9.WriteBytes(BitConverter.GetBytes(altEyeMusicID), dictEntry.entryOffset + 4);
+                        }
+
+                        trainerClassEncounterMusicDict[b_selectedTrClass] = (dictEntry.entryOffset, eyeMusicID, altEyeMusicID);
+                    }
+
+                    if (TrainerClassTableExpansion.IsPrizeMulSupportedForCurrentRom &&
+                        !TrainerClassTableExpansion.TryWritePrizeMul(selectedTrClass, (byte)prizeMulUpDown.Value, out string prizeMulError))
+                    {
+                        metadataSaved = false;
+                        metadataError = "Prize multiplier: " + prizeMulError;
+                    }
+
+                    byte selectedGender = (byte)trainerClassGenderComboBox.SelectedIndex;
+                    byte genderToWrite = selectedGender == 0 && loadedNativeTrainerClassGender == 2
+                        ? loadedNativeTrainerClassGender
+                        : selectedGender;
+                    if (trainerClassGenderComboBox.Enabled &&
+                        !TrainerClassTableExpansion.TryWriteGender(selectedTrClass, genderToWrite, out string genderError))
+                    {
+                        metadataSaved = false;
+                        string genderSaveError = "Trainer gender: " + genderError;
+                        metadataError = string.IsNullOrEmpty(metadataError)
+                            ? genderSaveError
+                            : metadataError + "\n" + genderSaveError;
+                    }
+                    else if (trainerClassGenderComboBox.Enabled)
+                    {
+                        loadedNativeTrainerClassGender = genderToWrite;
+                    }
+                }
+                else
+                {
+                    metadataSaved = false;
+                    metadataError = trainerClassMetadataDetail;
                 }
 
-                trainerClassEncounterMusicDict[b_selectedTrClass] = (dictEntry.entryOffset, eyeMusicID, altEyeMusicID);
-            }
+                string newName = trainerClassNameTextbox.Text;
+                UpdateCurrentTrainerClassName(newName);
+                trainerClassListBox.Items[selectedTrClass] = "[" + selectedTrClass.ToString("D3") + "]" + " " + newName;
 
-            if (TrainerClassTableExpansion.IsPrizeMulSupportedForCurrentRom)
-            {
-                if (!TrainerClassTableExpansion.TryWritePrizeMul(selectedTrClass, (byte)prizeMulUpDown.Value, out string prizeMulError))
+                if (currentTrainerFile.trp.trainerClass == trainerClassListBox.SelectedIndex)
                 {
-                    MessageBox.Show("Prize Multiplier wasn't saved: " + prizeMulError, "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    UpdateCurrentTrainerShownName();
                 }
             }
-
-            string newName = trainerClassNameTextbox.Text;
-            UpdateCurrentTrainerClassName(newName);
-            trainerClassListBox.Items[selectedTrClass] = "[" + selectedTrClass.ToString("D3") + "]" + " " + newName;
-
-            if (currentTrainerFile.trp.trainerClass == trainerClassListBox.SelectedIndex)
+            finally
             {
-                UpdateCurrentTrainerShownName();
+                Helpers.EnableHandlers();
             }
-            Helpers.EnableHandlers();
 
             if (gameFamily.Equals(GameFamilies.HGSS) && EditorPanels.tableEditor.battleTableEditorIsReady && EditorPanels.tableEditor.conditionnalMusicTableEditorIsReady)
             {
@@ -1462,7 +1586,15 @@ namespace DSPRE.Editors
                     }
                 }
             }
-            MessageBox.Show("Trainer Class settings saved.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            if (metadataSaved)
+            {
+                MessageBox.Show("Trainer Class settings saved.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show("The trainer-class name was saved, but its metadata was not: " + metadataError,
+                    "Trainer-class metadata not saved", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private void trClassFramePreviewUpDown_ValueChanged(object sender, EventArgs e)

@@ -157,9 +157,18 @@ namespace DSPRE.Editors
                     PatchToolboxDialog.flag_PokemonBattleTableRepointed = (vsPokemonTableStartAddress >= RomInfo.synthOverlayLoadAddress);
                     vsPokemonTableStartAddress -= PatchToolboxDialog.flag_PokemonBattleTableRepointed ? RomInfo.synthOverlayLoadAddress : ARM9.address;
 
-                    vsTrainerTableStartAddress = BitConverter.ToUInt32(ARM9.ReadBytes(RomInfo.vsTrainerEntryTableOffsetToRAMAddress, 4), 0);
-                    PatchToolboxDialog.flag_TrainerClassBattleTableRepointed = (vsTrainerTableStartAddress >= RomInfo.synthOverlayLoadAddress);
-                    vsTrainerTableStartAddress -= PatchToolboxDialog.flag_TrainerClassBattleTableRepointed ? RomInfo.synthOverlayLoadAddress : ARM9.address;
+                    byte trainerTableEntriesCount = ARM9.ReadByte(RomInfo.vsTrainerEntryTableOffsetToSizeLimiter);
+                    if (trainerTableEntriesCount > 0)
+                    {
+                        vsTrainerTableStartAddress = BitConverter.ToUInt32(ARM9.ReadBytes(RomInfo.vsTrainerEntryTableOffsetToRAMAddress, 4), 0);
+                        PatchToolboxDialog.flag_TrainerClassBattleTableRepointed = (vsTrainerTableStartAddress >= RomInfo.synthOverlayLoadAddress);
+                        vsTrainerTableStartAddress -= PatchToolboxDialog.flag_TrainerClassBattleTableRepointed ? RomInfo.synthOverlayLoadAddress : ARM9.address;
+                    }
+                    else
+                    {
+                        vsTrainerTableStartAddress = 0;
+                        PatchToolboxDialog.flag_TrainerClassBattleTableRepointed = false;
+                    }
 
 
                     pbEffectsPokemonCombobox.Items.Clear();
@@ -185,17 +194,19 @@ namespace DSPRE.Editors
 
                 if (RomInfo.gameFamily == GameFamilies.HGSS)
                 {
-                    using (DSUtils.EasyReader ar = new DSUtils.EasyReader(PatchToolboxDialog.flag_TrainerClassBattleTableRepointed ? expArmPath : RomInfo.arm9Path, vsTrainerTableStartAddress))
+                    byte trainerTableEntriesCount = ARM9.ReadByte(RomInfo.vsTrainerEntryTableOffsetToSizeLimiter);
+                    if (trainerTableEntriesCount > 0)
                     {
-                        byte trainerTableEntriesCount = ARM9.ReadByte(RomInfo.vsTrainerEntryTableOffsetToSizeLimiter);
-
-                        for (int i = 0; i < trainerTableEntriesCount; i++)
+                        using (DSUtils.EasyReader ar = new DSUtils.EasyReader(PatchToolboxDialog.flag_TrainerClassBattleTableRepointed ? expArmPath : RomInfo.arm9Path, vsTrainerTableStartAddress))
                         {
-                            ushort entry = ar.ReadUInt16();
-                            int classID = entry & 1023;
-                            int comboID = entry >> 10;
-                            vsTrainerEffectsList.Add((classID, comboID));
-                            pbEffectsVsTrainerListbox.Items.Add(pbEffectsTrainerCombobox.Items[classID] + " uses Combo #" + comboID);
+                            for (int i = 0; i < trainerTableEntriesCount; i++)
+                            {
+                                ushort entry = ar.ReadUInt16();
+                                int classID = entry & 1023;
+                                int comboID = entry >> 10;
+                                vsTrainerEffectsList.Add((classID, comboID));
+                                pbEffectsVsTrainerListbox.Items.Add(pbEffectsTrainerCombobox.Items[classID] + " uses Combo #" + comboID);
+                            }
                         }
                     }
 
@@ -243,6 +254,7 @@ namespace DSPRE.Editors
                     pbEffectsPokemonChooseMainCombobox.Items.AddRange(items);
                     pbEffectsTrainerChooseMainCombobox.Items.Clear();
                     pbEffectsTrainerChooseMainCombobox.Items.AddRange(items);
+                    pbEffectsTrainerGroupBox.Enabled = pbEffectsVsTrainerListbox.Items.Count > 0;
 
                     if (pbEffectsVsTrainerListbox.Items.Count > 0)
                     {
@@ -394,6 +406,11 @@ namespace DSPRE.Editors
         private void saveVSTrainerEntryBTN_Click(object sender, EventArgs e)
         {
             int index = pbEffectsVsTrainerListbox.SelectedIndex;
+            if (index < 0 || index >= vsTrainerEffectsList.Count)
+            {
+                return;
+            }
+
             ushort trainerClass = (ushort)pbEffectsTrainerCombobox.SelectedIndex;
             ushort comboID = (ushort)pbEffectsTrainerChooseMainCombobox.SelectedIndex;
 

@@ -180,6 +180,8 @@
             this.encounterSSEQMainUpDown = new System.Windows.Forms.NumericUpDown();
             this.prizeMulLabel = new System.Windows.Forms.Label();
             this.prizeMulUpDown = new System.Windows.Forms.NumericUpDown();
+            this.trainerClassGenderLabel = new System.Windows.Forms.Label();
+            this.trainerClassGenderComboBox = new System.Windows.Forms.ComboBox();
             this.trainerClassFrameMaxLabel = new System.Windows.Forms.Label();
             this.label40 = new System.Windows.Forms.Label();
             this.trClassFramePreviewUpDown = new System.Windows.Forms.NumericUpDown();
@@ -2044,9 +2046,11 @@
             this.groupBox27.Controls.Add(this.trainerClassPicBox);
             this.groupBox27.Controls.Add(this.prizeMulLabel);
             this.groupBox27.Controls.Add(this.prizeMulUpDown);
+            this.groupBox27.Controls.Add(this.trainerClassGenderLabel);
+            this.groupBox27.Controls.Add(this.trainerClassGenderComboBox);
             this.groupBox27.Location = new System.Drawing.Point(20, 494);
             this.groupBox27.Name = "groupBox27";
-            this.groupBox27.Size = new System.Drawing.Size(414, 155);
+            this.groupBox27.Size = new System.Drawing.Size(414, 165);
             this.groupBox27.TabIndex = 51;
             this.groupBox27.TabStop = false;
             this.groupBox27.Text = "Trainer Class Editor";
@@ -2071,6 +2075,27 @@
             this.prizeMulUpDown.Name = "prizeMulUpDown";
             this.prizeMulUpDown.Size = new System.Drawing.Size(81, 20);
             this.prizeMulUpDown.TabIndex = 53;
+            //
+            // trainerClassGenderLabel
+            //
+            this.trainerClassGenderLabel.AutoSize = true;
+            this.trainerClassGenderLabel.Location = new System.Drawing.Point(101, 117);
+            this.trainerClassGenderLabel.Name = "trainerClassGenderLabel";
+            this.trainerClassGenderLabel.Size = new System.Drawing.Size(78, 13);
+            this.trainerClassGenderLabel.TabIndex = 54;
+            this.trainerClassGenderLabel.Text = "Trainer Gender";
+            //
+            // trainerClassGenderComboBox
+            //
+            this.trainerClassGenderComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.trainerClassGenderComboBox.FormattingEnabled = true;
+            this.trainerClassGenderComboBox.Items.AddRange(new object[] {
+            "Male or Multi",
+            "Female"});
+            this.trainerClassGenderComboBox.Location = new System.Drawing.Point(104, 133);
+            this.trainerClassGenderComboBox.Name = "trainerClassGenderComboBox";
+            this.trainerClassGenderComboBox.Size = new System.Drawing.Size(121, 21);
+            this.trainerClassGenderComboBox.TabIndex = 55;
             //
             // encounterSSEQMainUpDown
             // 
@@ -2582,6 +2607,8 @@
         private System.Windows.Forms.Label eyeContactMusicLabel;
         private System.Windows.Forms.Label prizeMulLabel;
         private System.Windows.Forms.NumericUpDown prizeMulUpDown;
+        private System.Windows.Forms.Label trainerClassGenderLabel;
+        private System.Windows.Forms.ComboBox trainerClassGenderComboBox;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel4;
         private System.Windows.Forms.Button exportTrainerButton;
         private System.Windows.Forms.Button importTrainerButton;
