@@ -66,6 +66,9 @@ namespace DSPRE.Editors
             currentTrainerFile = null;
             trainerClassMetadataState = TrainerClassMetadataDetectionState.Stock;
             trainerClassMetadataDetail = null;
+            trainerClassDatasetsReady = false;
+            trainerClassDatasetError = null;
+            SetTrainerClassMetadataControlsEnabled(false);
 
             // Clear combo boxes and list boxes
             trainerComboBox.Items.Clear();
@@ -129,6 +132,9 @@ namespace DSPRE.Editors
         private TrainerClassMetadataDetectionState trainerClassMetadataState = TrainerClassMetadataDetectionState.Stock;
         private string trainerClassMetadataDetail;
         private byte loadedNativeTrainerClassGender;
+        private ushort loadedTrainerClassMetadataGender;
+        private bool trainerClassDatasetsReady;
+        private string trainerClassDatasetError;
         private void SetupTrainerClassEncounterMusicTable()
         {
             RomInfo.SetEncounterMusicTableOffsetToRAMAddress();
@@ -476,6 +482,7 @@ namespace DSPRE.Editors
 
             Helpers.EnableHandlers();
             trainerComboBox_SelectedIndexChanged(null, null);
+            RefreshTrainerClassManagementState(showError: true);
             Helpers.statusLabelMessage();
 
             if (trainerClassMetadataState == TrainerClassMetadataDetectionState.Inconsistent)
@@ -594,6 +601,9 @@ namespace DSPRE.Editors
 
             // AI Info Button Tooltip
             toolTip.SetToolTip(aiInfoButton, "Open a link to Lhea's detailed explanation of Gen IV move selection AI");
+            toolTip.SetToolTip(presentationMetadataButton, "Edit the selected class's trainer-class presentation metadata.");
+            toolTip.SetToolTip(addTrainerClassButton, "Copy the selected trainer class to the next class ID.");
+            toolTip.SetToolTip(removeLastTrainerClassButton, "Remove the final trainer class when no trainer uses it.");
         }
 
         private void trainerComboBox_SelectedIndexChanged(object sender, EventArgs e)
@@ -1259,6 +1269,8 @@ namespace DSPRE.Editors
         private void trainerClassListBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             int selection = trainerClassListBox.SelectedIndex;
+            addTrainerClassButton.Enabled = trainerClassDatasetsReady && selection >= 0 &&
+                trainerClassListBox.Items.Count <= byte.MaxValue;
             if (selection < 0)
             {
                 return;
@@ -1297,10 +1309,12 @@ namespace DSPRE.Editors
                 {
                     SetTrainerClassMetadataControlsEnabled(true);
                     prizeMulUpDown.Maximum = ushort.MaxValue;
-                    trainerClassGenderComboBox.SelectedIndex = fields.Gender;
+                    loadedTrainerClassMetadataGender = fields.Gender;
+                    trainerClassGenderComboBox.SelectedIndex = fields.Gender == 1 ? 1 : 0;
                     prizeMulUpDown.Value = fields.PrizeCoefficient;
                     encounterSSEQMainUpDown.Value = fields.MainEyeContactMusic;
                     encounterSSEQAltUpDown.Value = fields.AlternateEyeContactMusic;
+                    trainerClassBattleMusicUpDown.Value = fields.BattleMusic;
                 }
                 else
                 {
@@ -1358,15 +1372,19 @@ namespace DSPRE.Editors
             eyeContactMusicLabel.Enabled = encounterSSEQMainUpDown.Enabled = enabled;
             bool alternateEnabled = enabled && gameFamily == GameFamilies.HGSS;
             eyeContactMusicAltLabel.Enabled = encounterSSEQAltUpDown.Enabled = alternateEnabled;
+            trainerClassBattleMusicLabel.Enabled = trainerClassBattleMusicUpDown.Enabled = enabled;
+            presentationMetadataButton.Enabled = enabled;
         }
 
         private void ClearTrainerClassMetadataControls()
         {
             loadedNativeTrainerClassGender = 0;
+            loadedTrainerClassMetadataGender = 0;
             trainerClassGenderComboBox.SelectedIndex = 0;
             prizeMulUpDown.Value = 0;
             encounterSSEQMainUpDown.Value = 0;
             encounterSSEQAltUpDown.Value = 0;
+            trainerClassBattleMusicUpDown.Value = 0;
         }
 
         private void addTrainerButton_Click(object sender, EventArgs e)
@@ -1506,14 +1524,23 @@ namespace DSPRE.Editors
 
                 if (trainerClassMetadataState == TrainerClassMetadataDetectionState.SchemaV1)
                 {
+                    ushort selectedGender = (ushort)trainerClassGenderComboBox.SelectedIndex;
+                    ushort genderToWrite = selectedGender == 0 && loadedTrainerClassMetadataGender != 1
+                        ? loadedTrainerClassMetadataGender
+                        : selectedGender;
                     var fields = new TrainerClassMetadataCommonFields
                     {
-                        Gender = (ushort)trainerClassGenderComboBox.SelectedIndex,
+                        Gender = genderToWrite,
                         PrizeCoefficient = (ushort)prizeMulUpDown.Value,
                         MainEyeContactMusic = eyeMusicID,
-                        AlternateEyeContactMusic = altEyeMusicID
+                        AlternateEyeContactMusic = altEyeMusicID,
+                        BattleMusic = (ushort)trainerClassBattleMusicUpDown.Value
                     };
                     metadataSaved = TrainerClassMetadataStore.TryWriteCommonFields(selectedTrClass, fields, out metadataError);
+                    if (metadataSaved)
+                    {
+                        loadedTrainerClassMetadataGender = genderToWrite;
+                    }
                 }
                 else if (trainerClassMetadataState == TrainerClassMetadataDetectionState.Stock)
                 {
@@ -1600,6 +1627,143 @@ namespace DSPRE.Editors
         private void trClassFramePreviewUpDown_ValueChanged(object sender, EventArgs e)
         {
             UpdateTrainerClassPic(trainerClassPicBox, (int)trClassFramePreviewUpDown.Value);
+        }
+
+        private void presentationMetadataButton_Click(object sender, EventArgs e)
+        {
+            int selectedClass = trainerClassListBox.SelectedIndex;
+            if (trainerClassMetadataState != TrainerClassMetadataDetectionState.SchemaV1 || selectedClass < 0)
+            {
+                return;
+            }
+
+            if (!TrainerClassMetadataStore.TryReadRecord(selectedClass, out TrainerClassMetadataRecord record,
+                out string error))
+            {
+                MessageBox.Show(error, "Trainer-class metadata error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            string classLabel = trainerClassListBox.SelectedItem?.ToString() ?? "Trainer class " + selectedClass;
+            using (var editor = new TrainerClassPresentationEditor(selectedClass, classLabel, record))
+            {
+                editor.ShowDialog(this);
+            }
+        }
+
+        private void RefreshTrainerClassManagementState(bool showError)
+        {
+            trainerClassDatasetsReady = false;
+            trainerClassDatasetError = null;
+            addTrainerClassButton.Enabled = false;
+            removeLastTrainerClassButton.Enabled = false;
+
+            if (trainerClassMetadataState != TrainerClassMetadataDetectionState.SchemaV1) return;
+            if (!TrainerClassDatasetManager.TryInspect(out TrainerClassDatasetState state, out trainerClassDatasetError))
+            {
+                toolTip.SetToolTip(addTrainerClassButton, trainerClassDatasetError);
+                toolTip.SetToolTip(removeLastTrainerClassButton, trainerClassDatasetError);
+                if (showError)
+                {
+                    MessageBox.Show(trainerClassDatasetError, "Trainer-class management unavailable",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                return;
+            }
+
+            trainerClassDatasetsReady = true;
+            addTrainerClassButton.Enabled = trainerClassListBox.SelectedIndex >= 0 && state.MetadataCount <= byte.MaxValue;
+            removeLastTrainerClassButton.Enabled = state.MetadataCount > 1;
+            toolTip.SetToolTip(addTrainerClassButton, state.MetadataCount <= byte.MaxValue
+                ? "Copy the selected trainer class to class ID " + state.MetadataCount + "."
+                : "DSPRE's current Trainer Editor cannot assign class IDs above 255.");
+            toolTip.SetToolTip(removeLastTrainerClassButton,
+                "Remove final trainer class " + (state.MetadataCount - 1) + " after checking trainer use.");
+        }
+
+        private void addTrainerClassButton_Click(object sender, EventArgs e)
+        {
+            int sourceClassId = trainerClassListBox.SelectedIndex;
+            if (!TrainerClassDatasetManager.TryInspect(out TrainerClassDatasetState state, out string error))
+            {
+                MessageBox.Show(error, "Trainer class wasn't added", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                RefreshTrainerClassManagementState(showError: false);
+                return;
+            }
+            if (sourceClassId < 0 || sourceClassId >= state.MetadataCount) return;
+
+            string sourceName = state.ClassNames[sourceClassId];
+            DialogResult confirmation = MessageBox.Show(
+                "Copy trainer class " + sourceClassId + " (" + sourceName + ") to new class ID " +
+                state.MetadataCount + "?\n\nThe metadata, both class-text entries, and all five battle-graphics members will be copied.",
+                "Add trainer class", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (confirmation != DialogResult.Yes) return;
+
+            if (!TrainerClassDatasetManager.TryCopyClass(sourceClassId, out int newClassId, out error))
+            {
+                MessageBox.Show(error, "Trainer class wasn't added", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                RefreshTrainerClassManagementState(showError: false);
+                return;
+            }
+
+            trainerClassListBox.Items.Add("[" + newClassId.ToString("D3") + "] " + sourceName);
+            if (gameFamily == GameFamilies.HGSS && EditorPanels.tableEditor.battleTableEditorIsReady)
+                EditorPanels.tableEditor.RefreshTrainerClassNames();
+            RefreshTrainerClassManagementState(showError: false);
+            MessageBox.Show("Trainer class " + newClassId + " was copied from class " + sourceClassId + ".",
+                "Trainer class added", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void removeLastTrainerClassButton_Click(object sender, EventArgs e)
+        {
+            if (!TrainerClassDatasetManager.TryInspect(out TrainerClassDatasetState state, out string error))
+            {
+                MessageBox.Show(error, "Trainer class wasn't removed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                RefreshTrainerClassManagementState(showError: false);
+                return;
+            }
+
+            int finalClassId = state.MetadataCount - 1;
+            if (!TrainerClassDatasetManager.TryFindTrainerUses(finalClassId, out List<int> trainerIds, out error))
+            {
+                MessageBox.Show(error, "Trainer class wasn't removed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            if (trainerIds.Count > 0)
+            {
+                MessageBox.Show("Trainer class " + finalClassId + " is used by trainer" +
+                    (trainerIds.Count == 1 ? " " : "s ") + string.Join(", ", trainerIds) + ".",
+                    "Trainer class is in use", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            string finalName = state.ClassNames[finalClassId];
+            DialogResult confirmation = MessageBox.Show(
+                "Remove final trainer class " + finalClassId + " (" + finalName + ")?\n\n" +
+                "No standard trainer uses this class. DSPRE cannot detect references in custom code, Pokegear data, or independently edited Frontier data.",
+                "Remove final trainer class", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (confirmation != DialogResult.Yes) return;
+
+            if (!TrainerClassDatasetManager.TryRemoveLastClass(out int removedClassId, out error))
+            {
+                MessageBox.Show(error, "Trainer class wasn't removed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                RefreshTrainerClassManagementState(showError: false);
+                return;
+            }
+
+            int selectedClassBeforeRemoval = trainerClassListBox.SelectedIndex;
+            if (trainerClassListBox.Items.Count > removedClassId)
+                trainerClassListBox.Items.RemoveAt(removedClassId);
+            if (trainerClassListBox.Items.Count > 0 &&
+                (trainerClassListBox.SelectedIndex < 0 || trainerClassListBox.SelectedIndex >= trainerClassListBox.Items.Count))
+            {
+                trainerClassListBox.SelectedIndex = Math.Min(selectedClassBeforeRemoval, trainerClassListBox.Items.Count - 1);
+            }
+            if (gameFamily == GameFamilies.HGSS && EditorPanels.tableEditor.battleTableEditorIsReady)
+                EditorPanels.tableEditor.RefreshTrainerClassNames();
+            RefreshTrainerClassManagementState(showError: false);
+            MessageBox.Show("Trainer class " + removedClassId + " was removed.", "Trainer class removed",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void animateTrainerFramesCheckbox_CheckedChanged(object sender, EventArgs e)

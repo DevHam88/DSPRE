@@ -288,6 +288,26 @@ namespace DSPRE.Editors
             }
         }
 
+        internal void RefreshTrainerClassNames()
+        {
+            int previousSelection = pbEffectsTrainerCombobox.SelectedIndex;
+            Helpers.BackUpDisableHandler();
+            try
+            {
+                Helpers.DisableHandlers();
+                RepopulateTableEditorTrainerClasses();
+                if (pbEffectsTrainerCombobox.Items.Count > 0)
+                {
+                    pbEffectsTrainerCombobox.SelectedIndex = Math.Min(previousSelection < 0 ? 0 : previousSelection,
+                        pbEffectsTrainerCombobox.Items.Count - 1);
+                }
+            }
+            finally
+            {
+                Helpers.RestoreDisableHandler();
+            }
+        }
+
         private void conditionalMusicTableListBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             int selection = conditionalMusicTableListBox.SelectedIndex;

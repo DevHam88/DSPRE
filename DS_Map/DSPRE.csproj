@@ -414,6 +414,12 @@
     <Compile Include="Editors\TrainerEditor\TrainerEditor.Designer.cs">
       <DependentUpon>TrainerEditor.cs</DependentUpon>
     </Compile>
+    <Compile Include="Editors\TrainerEditor\TrainerClassPresentationEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Editors\TrainerEditor\TrainerClassPresentationEditor.Designer.cs">
+      <DependentUpon>TrainerClassPresentationEditor.cs</DependentUpon>
+    </Compile>
     <Compile Include="Editors\Utils\LoadingForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -568,6 +574,7 @@
     <Compile Include="ROMFiles\SpeciesFile.cs" />
     <Compile Include="ROMFiles\TrainerFile.cs" />
     <Compile Include="ROMFiles\TrainerClassMetadataRecord.cs" />
+    <Compile Include="ROMFiles\TrainerClassDatasetManager.cs" />
     <Compile Include="PatchToolboxDialog.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -807,6 +814,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Editors\TrainerEditor\TrainerEditor.resx">
       <DependentUpon>TrainerEditor.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Editors\TrainerEditor\TrainerClassPresentationEditor.resx">
+      <DependentUpon>TrainerClassPresentationEditor.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="EventFileImport.resx">
       <DependentUpon>EventFileImport.cs</DependentUpon>

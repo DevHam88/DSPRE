@@ -182,6 +182,11 @@
             this.prizeMulUpDown = new System.Windows.Forms.NumericUpDown();
             this.trainerClassGenderLabel = new System.Windows.Forms.Label();
             this.trainerClassGenderComboBox = new System.Windows.Forms.ComboBox();
+            this.trainerClassBattleMusicLabel = new System.Windows.Forms.Label();
+            this.trainerClassBattleMusicUpDown = new System.Windows.Forms.NumericUpDown();
+            this.presentationMetadataButton = new System.Windows.Forms.Button();
+            this.addTrainerClassButton = new System.Windows.Forms.Button();
+            this.removeLastTrainerClassButton = new System.Windows.Forms.Button();
             this.trainerClassFrameMaxLabel = new System.Windows.Forms.Label();
             this.label40 = new System.Windows.Forms.Label();
             this.trClassFramePreviewUpDown = new System.Windows.Forms.NumericUpDown();
@@ -261,6 +266,7 @@
             this.groupBox27.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.encounterSSEQMainUpDown)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.prizeMulUpDown)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.trainerClassBattleMusicUpDown)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trClassFramePreviewUpDown)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trainerClassPicBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.partyCountUpDown)).BeginInit();
@@ -2048,6 +2054,11 @@
             this.groupBox27.Controls.Add(this.prizeMulUpDown);
             this.groupBox27.Controls.Add(this.trainerClassGenderLabel);
             this.groupBox27.Controls.Add(this.trainerClassGenderComboBox);
+            this.groupBox27.Controls.Add(this.trainerClassBattleMusicLabel);
+            this.groupBox27.Controls.Add(this.trainerClassBattleMusicUpDown);
+            this.groupBox27.Controls.Add(this.presentationMetadataButton);
+            this.groupBox27.Controls.Add(this.addTrainerClassButton);
+            this.groupBox27.Controls.Add(this.removeLastTrainerClassButton);
             this.groupBox27.Location = new System.Drawing.Point(20, 494);
             this.groupBox27.Name = "groupBox27";
             this.groupBox27.Size = new System.Drawing.Size(414, 165);
@@ -2096,6 +2107,62 @@
             this.trainerClassGenderComboBox.Name = "trainerClassGenderComboBox";
             this.trainerClassGenderComboBox.Size = new System.Drawing.Size(121, 21);
             this.trainerClassGenderComboBox.TabIndex = 55;
+            //
+            // trainerClassBattleMusicLabel
+            //
+            this.trainerClassBattleMusicLabel.AutoSize = true;
+            this.trainerClassBattleMusicLabel.Enabled = false;
+            this.trainerClassBattleMusicLabel.Location = new System.Drawing.Point(234, 117);
+            this.trainerClassBattleMusicLabel.Name = "trainerClassBattleMusicLabel";
+            this.trainerClassBattleMusicLabel.Size = new System.Drawing.Size(68, 13);
+            this.trainerClassBattleMusicLabel.TabIndex = 56;
+            this.trainerClassBattleMusicLabel.Text = "Battle Music";
+            //
+            // trainerClassBattleMusicUpDown
+            //
+            this.trainerClassBattleMusicUpDown.Enabled = false;
+            this.trainerClassBattleMusicUpDown.Location = new System.Drawing.Point(237, 133);
+            this.trainerClassBattleMusicUpDown.Maximum = new decimal(new int[] {
+            65535,
+            0,
+            0,
+            0});
+            this.trainerClassBattleMusicUpDown.Name = "trainerClassBattleMusicUpDown";
+            this.trainerClassBattleMusicUpDown.Size = new System.Drawing.Size(76, 20);
+            this.trainerClassBattleMusicUpDown.TabIndex = 57;
+            //
+            // presentationMetadataButton
+            //
+            this.presentationMetadataButton.Enabled = false;
+            this.presentationMetadataButton.Location = new System.Drawing.Point(322, 116);
+            this.presentationMetadataButton.Name = "presentationMetadataButton";
+            this.presentationMetadataButton.Size = new System.Drawing.Size(80, 38);
+            this.presentationMetadataButton.TabIndex = 58;
+            this.presentationMetadataButton.Text = "Presentation\r\nMetadata";
+            this.presentationMetadataButton.UseVisualStyleBackColor = true;
+            this.presentationMetadataButton.Click += new System.EventHandler(this.presentationMetadataButton_Click);
+            //
+            // addTrainerClassButton
+            //
+            this.addTrainerClassButton.Enabled = false;
+            this.addTrainerClassButton.Image = global::DSPRE.Properties.Resources.addIcon;
+            this.addTrainerClassButton.Location = new System.Drawing.Point(213, 52);
+            this.addTrainerClassButton.Name = "addTrainerClassButton";
+            this.addTrainerClassButton.Size = new System.Drawing.Size(47, 23);
+            this.addTrainerClassButton.TabIndex = 59;
+            this.addTrainerClassButton.UseVisualStyleBackColor = true;
+            this.addTrainerClassButton.Click += new System.EventHandler(this.addTrainerClassButton_Click);
+            //
+            // removeLastTrainerClassButton
+            //
+            this.removeLastTrainerClassButton.Enabled = false;
+            this.removeLastTrainerClassButton.Image = global::DSPRE.Properties.Resources.deleteIcon;
+            this.removeLastTrainerClassButton.Location = new System.Drawing.Point(265, 52);
+            this.removeLastTrainerClassButton.Name = "removeLastTrainerClassButton";
+            this.removeLastTrainerClassButton.Size = new System.Drawing.Size(47, 23);
+            this.removeLastTrainerClassButton.TabIndex = 60;
+            this.removeLastTrainerClassButton.UseVisualStyleBackColor = true;
+            this.removeLastTrainerClassButton.Click += new System.EventHandler(this.removeLastTrainerClassButton_Click);
             //
             // encounterSSEQMainUpDown
             // 
@@ -2490,6 +2557,7 @@
             this.groupBox27.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.encounterSSEQMainUpDown)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.prizeMulUpDown)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.trainerClassBattleMusicUpDown)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.trClassFramePreviewUpDown)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.trainerClassPicBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.partyCountUpDown)).EndInit();
@@ -2609,6 +2677,11 @@
         private System.Windows.Forms.NumericUpDown prizeMulUpDown;
         private System.Windows.Forms.Label trainerClassGenderLabel;
         private System.Windows.Forms.ComboBox trainerClassGenderComboBox;
+        private System.Windows.Forms.Label trainerClassBattleMusicLabel;
+        private System.Windows.Forms.NumericUpDown trainerClassBattleMusicUpDown;
+        private System.Windows.Forms.Button presentationMetadataButton;
+        private System.Windows.Forms.Button addTrainerClassButton;
+        private System.Windows.Forms.Button removeLastTrainerClassButton;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel4;
         private System.Windows.Forms.Button exportTrainerButton;
         private System.Windows.Forms.Button importTrainerButton;
