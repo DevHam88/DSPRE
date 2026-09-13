@@ -83,7 +83,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\DS_Map\bin\Release\databases" | Out-Null
           robocopy databases "${{ github.workspace }}\DS_Map\bin\Release\databases" /E /XD "databases\.git\objects\pack"
-          if ($LASTEXITCODE -gt 7) { exit $LASTEXITCODE }
+          if ($LASTEXITCODE -le 7) { exit 0 } else { exit $LASTEXITCODE }
 
       - name: Create package
         shell: pwsh
